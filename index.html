@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com; frame-src https://*.firebaseapp.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'"><meta name="referrer" content="no-referrer"><script>try{if(top!==self){top.location=self.location}}catch(e){document.documentElement.innerHTML=""}</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ReelCoin – student practice project</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" media="print" onload="this.media='all'">
 <style>
@@ -224,7 +225,7 @@ nav button[aria-current="page"]:before{content:"";position:absolute;top:0;left:2
 <div class="tabs"><button id="aTL" class="on" type="button">Login</button><button id="aTN" type="button">New User</button></div>
 <div id="aNm" style="display:none"><label for="aName">Name</label><input id="aName" maxlength="40" placeholder="Your name" autocomplete="name"></div>
 <label for="aPh">Mobile number</label><input id="aPh" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" autocomplete="tel">
-<label for="aPw">Password</label><input id="aPw" type="password" placeholder="Password (min 6 characters)" autocomplete="current-password">
+<label for="aPw">Password</label><input id="aPw" type="password" placeholder="Password (min 8 characters)" autocomplete="current-password">
 <div id="aNew" style="display:none">
 <label for="aPw2">Re-enter password</label><input id="aPw2" type="password" placeholder="Re-enter password" autocomplete="new-password">
 <label for="aIv">Invitation code</label><input id="aIv" maxlength="10" placeholder="Invitation code (required)" style="text-transform:uppercase" autocapitalize="characters">
@@ -272,22 +273,29 @@ async function start(user){
  window.save=function(){orig();clearTimeout(t);t=setTimeout(push,1500)};
  document.addEventListener("visibilitychange",()=>{if(document.hidden){clearTimeout(t);push()}});
 }
-window.rcLogout=async()=>{try{await signOut(auth)}catch(e){}location.reload()};
+window.rcLogout=async()=>{try{Object.keys(localStorage).filter(k=>k.indexOf("rc2_")==0).forEach(k=>localStorage.removeItem(k))}catch(e){}try{await signOut(auth)}catch(e){}location.reload()};
 onAuthStateChanged(auth,u=>{if(registering)return;if(u)start(u);else showForm()});
 async function login(ph,pw){
  try{await signInWithEmailAndPassword(auth,EM(ph),pw)}
  catch(e){const c=e.code;err(c=="auth/network-request-failed"?"Network problem. Try again.":c=="auth/too-many-requests"?"Too many attempts. Try later.":"Wrong mobile number or password.");busy(false)}
 }
 async function register(ph,pw){
- const name=$("aName").value.trim(),inv=$("aIv").value.trim().toUpperCase();
- if(name.length<2){err("Enter your name");busy(false);return}
+ const name=$("aName").value.trim().replace(/\s+/g," "),inv=$("aIv").value.trim().toUpperCase();
+ if(!/^[\p{L}\p{M}][\p{L}\p{M} .'-]{1,39}$/u.test(name)){err("Enter a valid name (letters only, 2-40 characters)");busy(false);return}
  if($("aPw2").value!==pw){err("Passwords do not match");busy(false);return}
  if(inv.length<6){err("Invitation code is required");busy(false);return}
  try{const c=await getDoc(doc(db,"codes",inv));if(!c.exists()){err("Invalid invitation code");busy(false);return}}
  catch(e){err("Could not check the code. Check internet.");busy(false);return}
  registering=true;let u;
  try{u=(await createUserWithEmailAndPassword(auth,EM(ph),pw)).user}
- catch(e){registering=false;err(e.code=="auth/email-already-in-use"?"This number is already registered. Please use Login.":e.code=="auth/weak-password"?"Password is too weak (min 6 characters)":"Could not register. Try again.");busy(false);return}
+ catch(e){
+  if(e.code=="auth/email-already-in-use"){
+   try{u=(await signInWithEmailAndPassword(auth,EM(ph),pw)).user;
+    const ex=await getDoc(doc(db,"users",u.uid));
+    if(ex.exists()){try{await signOut(auth)}catch(_){}registering=false;err("This number is already registered. Please use Login.");busy(false);return}
+   }catch(e2){registering=false;err("This number is already registered. Please use Login.");busy(false);return}
+  }else{registering=false;err(e.code=="auth/weak-password"?"Password is too weak (min 8 characters)":e.code=="auth/network-request-failed"?"Network problem. Try again.":"Could not register. Try again.");busy(false);return}
+ }
  let ok=false;
  for(let i=0;i<4&&!ok;i++){
   const code=genCode(),b=writeBatch(db);
@@ -301,7 +309,8 @@ async function register(ph,pw){
 $("aGo").onclick=()=>{
  const ph=$("aPh").value.trim(),pw=$("aPw").value;err("");
  if(!/^[6-9]\d{9}$/.test(ph)){err("Enter a valid 10-digit mobile number");return}
- if(pw.length<6){err("Password must be at least 6 characters");return}
+ if(!pw){err("Enter your password");return}
+ if(mode=="new"&&pw.length<8){err("Password must be at least 8 characters");return}
  busy(true);mode=="new"?register(ph,pw):login(ph,pw);
 };
 </script>

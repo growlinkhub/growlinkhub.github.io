@@ -208,7 +208,7 @@ nav button[aria-current="page"]:before{content:"";position:absolute;top:0;left:2
 <div class="card"><h2>Join with a friend’s code</h2><input id="friend" placeholder="Enter friend’s code" maxlength="10"><div class="row" style="margin-top:10px"><button class="btn" id="join">Apply code</button></div><p class="mut" id="jn"></p></div>
 <div class="card"><h2>Demo tool</h2><div class="row"><button class="btn sm" id="s1">Demo: add a team member</button></div></div></div></section>
 
-<section id="v-level" class="hide"><div class="hero" id="lvh"><div id="lvtabs" class="lvtabs"></div><div class="row" style="align-items:center;margin-top:16px"><div style="flex:1;min-width:0"><div class="lvey">MEMBERSHIP TIER</div><b id="lvn" style="display:block;font-size:40px;line-height:1.05;letter-spacing:1px;margin-top:2px"></b><div id="lvtag" class="lvtag"></div></div><div id="lvs"></div></div><div class="lvchips"><div><b id="lvc1"></b><small>Tasks / day</small></div><div><b id="lvc2"></b><small>Reward / task</small></div><div><b id="lvc3"></b><small>Daily target</small></div></div><div class="row" style="margin-top:12px;align-items:flex-start"><p id="lvi" style="margin:0;font-size:13px"></p><p id="lvt" style="margin:0;font-weight:800;font-size:13px;text-align:right;color:#ffe08a"></p></div><div class="bar"><i id="lvb"></i></div><p id="lvx" style="margin:8px 0 0;font-size:12.5px;opacity:.9"></p></div>
+<section id="v-level" class="hide"><div class="hero" id="lvh"><div id="lvtabs" class="lvtabs"></div><div class="row" style="align-items:center;margin-top:16px"><div style="flex:1;min-width:0"><div class="lvey">MEMBERSHIP TIER</div><b id="lvn" style="display:block;font-size:40px;line-height:1.05;letter-spacing:1px;margin-top:2px"></b><div id="lvtag" class="lvtag"></div></div><div id="lvs"></div></div><div class="lvchips"><div><b id="lvc1"></b><small>Tasks / day</small></div><div><b id="lvc2"></b><small>Reward / task</small></div><div><b id="lvc3"></b><small>Daily target</small></div></div><div class="row" style="margin-top:12px;align-items:flex-start"><p id="lvi" style="margin:0;font-size:13px"></p><p id="lvt" style="margin:0;font-weight:800;font-size:13px;text-align:right;color:#ffe08a"></p></div><div class="bar"><i id="lvb"></i></div><p id="lvx" style="margin:8px 0 0;font-size:12.5px;opacity:.9"></p><div id="lvbuy" class="row" style="margin-top:12px"></div></div>
 <div class="pad"><div class="card"><h2 id="lvh2"></h2><p class="mut">Number of promotion tasks and commission income per day</p><table><thead><tr><th>Time unit</th><th>Number of tasks</th><th>Total commission</th></tr></thead><tbody id="lvd"></tbody></table><div style="text-align:center;margin-top:12px" id="lvdots"></div><p class="mut">Swipe left or right to see each level. Levels are earned only by finishing all daily tasks in a row.</p>
 <div class="row" style="margin-top:12px"><button class="btn sm" id="fd">Demo: fake a finished day</button></div></div></div></section>
 
@@ -369,7 +369,7 @@ function save(){try{localStorage.setItem(window.RCKEY,JSON.stringify(S))}catch(e
 function dk(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function day(){var k=dk();S.days[k]=S.days[k]||{n:0,c:0};return S.days[k]}
 function streak(){var n=0,x=new Date();if(!(S.days[dk(x)]||{}).done)x.setDate(x.getDate()-1);while((S.days[dk(x)]||{}).done){n++;x.setDate(x.getDate()-1)}return n}
-function li(){var s=streak(),i=0;LV.forEach(function(l,k){if(s>=l.d)i=k});return i}
+function li(){var s=streak(),i=0;LV.forEach(function(l,k){if(s>=l.d||k<=(S.bought||0))i=k});return i}
 function lv(){return LV[li()]}
 function toast(t){var e=$("toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){e.style.display="none"},2600)}
 function modal(h){$("mb").innerHTML=h;$("md").classList.add("on")}
@@ -640,6 +640,7 @@ document.addEventListener("click",function(e){
   if(t.dataset.h!==undefined)info(+t.dataset.h);
   else if(t.dataset.t!==undefined)startTask(+t.dataset.t);
   else if(t.dataset.up!==undefined){var j=+t.dataset.up,L=LV[j];
+    if(j<=li()){toast("Already unlocked");return}
     if(S.f1<L.a||S.f2<L.b){toast("Needs "+L.a+" LG 1 and "+L.b+" LG 2 friends first");return}
     if(S.coins<L.p){toast("You need "+L.p+" coins to join "+L.n);return}
     S.coins-=L.p;S.bought=j;save();toast("You joined "+L.n);render()}
@@ -661,6 +662,8 @@ function lvlView(k,st,d){
   $("lvb").style.width=Math.round(done/l.v*100)+"%";
   $("lvx").textContent=v<k?"Unlocked":v==k?"Your current level":"Unlocks after a "+l.d+"-day streak of finishing all tasks. Your streak: "+st+" days.";
   $("lvh2").textContent=l.n+" • "+TT[v];
+  var own=v<=k,need=(l.a||l.b)?"Needs "+l.a+" LG 1"+(l.b?" + "+l.b+" LG 2":"")+" friends":"";
+  $("lvbuy").innerHTML='<div style="flex:1;min-width:0"><div style="font-size:11px;opacity:.8;font-weight:700;letter-spacing:.4px">PRICE</div><b style="font-size:20px;color:#ffe08a">'+l.p.toLocaleString("en-IN")+' coins</b>'+(need&&!own?'<div style="font-size:11px;opacity:.85">'+need+'</div>':'')+'</div>'+(own?'<span style="font-weight:800;font-size:13px;color:#cfd9f6">\u2713 Unlocked</span>':'<button class="btn sm" style="flex:none" data-up="'+v+'">Buy</button>');
   $("lvd").innerHTML=[["Daily",1],["Weekly",7],["Monthly",30]].map(function(u){return "<tr><td>"+u[0]+"</td><td>"+l.v*u[1]+"</td><td>"+l.t*u[1]+"</td></tr>"}).join("");
   $("lvdots").innerHTML=LV.map(function(x,j){return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px;background:'+(j==v?'var(--org)':'var(--line)')+'"></span>'}).join("");
 }
